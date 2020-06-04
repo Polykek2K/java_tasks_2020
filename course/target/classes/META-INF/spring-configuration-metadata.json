@@ -1,0 +1,24 @@
+{
+  "groups": [
+    {
+      "name": "jwt",
+      "type": "org.polytech.course.security.jwt.JwtProperties",
+      "sourceType": "org.polytech.course.security.jwt.JwtProperties"
+    }
+  ],
+  "properties": [
+    {
+      "name": "jwt.secret-key",
+      "type": "java.lang.String",
+      "sourceType": "org.polytech.course.security.jwt.JwtProperties",
+      "defaultValue": "secretKey"
+    },
+    {
+      "name": "jwt.validity-in-ms",
+      "type": "java.lang.Long",
+      "sourceType": "org.polytech.course.security.jwt.JwtProperties",
+      "defaultValue": 1800000
+    }
+  ],
+  "hints": []
+}

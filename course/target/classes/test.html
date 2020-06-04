@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8"/>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Library</title>
+    <meta name="description" content="Multi-Level Push Menu: Off-screen navigation with multiple levels"/>
+    <meta name="keywords"
+          content="multi-level, menu, navigation, off-canvas, off-screen, mobile, levels, nested, transform"/>
+    <meta name="author" content="Me"/>
+
+</head>
+<body>
+<script>
+    let roleAdmin = false
+    let token = ""
+    let url = "/"
+    let books = []
+    let clients = []
+    let bookTypes = []
+    let journal = []
+
+    Date.prototype.addDays = function (days) {
+        var date = new Date(this.valueOf());
+        date.setDate(date.getDate() + days);
+        return date;
+    }
+
+    function validateFloat(a, str) {
+        if (a.split('.').length > 2) {
+            alert(str);
+            return false
+        }
+        return true
+    }
+
+    function validatestr(a, str) {
+        for (var i = 0; i < a.length; i++) {
+            if (a[i] === "") {
+                alert(str);
+                return false
+            }
+        }
+        return true
+    }
+
+    function validate(evt) {
+        var theEvent = evt || window.event;
+
+        if (theEvent.type === 'paste') {
+            key = event.clipboardData.getData('text/plain');
+        } else {
+            var key = theEvent.keyCode || theEvent.which;
+            key = String.fromCharCode(key);
+        }
+        var regex = /[0-9]|\./;
+        if (!regex.test(key)) {
+            theEvent.returnValue = false;
+            if (theEvent.preventDefault) theEvent.preventDefault();
+        }
+    }
+
+    function validateInt(evt) {
+        var theEvent = evt || window.event;
+        if (theEvent.type === 'paste') {
+            key = event.clipboardData.getData('text/plain');
+        } else {
+            var key = theEvent.keyCode || theEvent.which;
+            key = String.fromCharCode(key);
+        }
+        var regex = /[0-9]/;
+        if (!regex.test(key)) {
+            theEvent.returnValue = false;
+            if (theEvent.preventDefault) theEvent.preventDefault();
+        }
+    }
+
+    function render_login_page() {
+        var div = document.body;
+        div.insertAdjacentHTML("beforeend", `
+    		<div class = "login" id = "login">
+    			<input id ="email" type="text" placeholder="login" value="admin">
+    			<input id ="password" type="text" placeholder="password" value="password">
+    			<button onclick = "login()">Login</button>
+    		</div>
+    		`)
+    }
+
+    function login() {
+        var email = document.getElementById("email").value
+        var password = document.getElementById("password").value
+        if (validatestr([email, password], "login or password are empty")) {
+            var request = new XMLHttpRequest();
+            request.open('POST', url + "auth/signin", false);
+            request.setRequestHeader("Content-Type", "application/json");
+            request.addEventListener('readystatechange', function () {
+                if ((request.readyState === 4) && (request.status === 200)) {
+                    var responce = JSON.parse(request.responseText)
+                    token = responce[responce.length - 1]
+                    document.getElementById("login").remove()
+                    isAdmin(responce)
+                    render_page()
+                } else {
+                    alert("uncorrect login or password")
+                }
+            })
+            request.send(JSON.stringify({'userName': email, 'password': password}))
+        }
+
+    }
+
+    function isAdmin(responce) {
+        for (i = 0; i < responce.length - 1; i++) {
+            if (responce[i] === "ROLE_ADMIN") {
+                roleAdmin = true
+            }
+        }
+    }
+
+    function getTables() {
+
+        books = []
+        journal = []
+        bookTypes = []
+        clients = []
+
+        var request = new XMLHttpRequest();
+        request.open('GET', url + "books", false)
+        request.setRequestHeader("Authorization", "Bearer " + token)
+        request.addEventListener('readystatechange', function () {
+            if ((request.readyState == 4) && (request.status == 200)) {
+                responce = JSON.parse(request.responseText)
+                for (i = 0; i < responce.length; i++) {
+                    books.push(responce[i])
+                }
+            }
+        });
+        request.send();
+
+        request = new XMLHttpRequest();
+        request.open('GET', url + "types", false)
+        request.setRequestHeader("Authorization", "Bearer " + token)
+        request.addEventListener('readystatechange', function () {
+            if ((request.readyState == 4) && (request.status == 200)) {
+                responce = JSON.parse(request.responseText)
+                for (i = 0; i < responce.length; i++) {
+                    bookTypes.push(responce[i])
+                }
+            }
+        });
+        request.send();
+
+        request = new XMLHttpRequest();
+        request.open('GET', url + "clients", false)
+        request.setRequestHeader("Authorization", "Bearer " + token)
+        request.addEventListener('readystatechange', function () {
+            if ((request.readyState == 4) && (request.status == 200)) {
+                responce = JSON.parse(request.responseText)
+                for (i = 0; i < responce.length; i++) {
+                    clients.push(responce[i])
+                }
+            }
+        });
+        request.send();
+
+
+        request = new XMLHttpRequest();
+        request.open('GET', url + "journals", false)
+        request.setRequestHeader("Authorization", "Bearer " + token)
+        request.addEventListener('readystatechange', function () {
+            if ((request.readyState == 4) && (request.status == 200)) {
+                responce = JSON.parse(request.responseText)
+                for (i = 0; i < responce.length; i++) {
+                    journal.push(responce[i])
+                }
+            }
+        });
+        request.send();
+    }
+
+    function editJournal(id) {
+        try {
+            document.getElementById("page").remove()
+        } catch (e) {
+        }
+        for (var jo = 0; jo < journal.length; jo++) {
+            if (journal[jo].id === id) {
+                break;
+            }
+        }
+        var div = document.body;
+        div.insertAdjacentHTML("beforeend", `
+				<div id = "page">
+					<div>
+						<p>Book:</p>
+						<select id = "editJournalBook"></select>
+					</div>
+					<div>
+						<p>Client:</p>
+						<select id = "editJournalClient"></select>
+					</div>
+					<div>
+						<p>Date return</p>
+						<input type="text" placeholder="04.06.2020" id = "editJournalDateRet" onkeypress="validate(event)">
+					</div>
+					<button onclick="editJournalSubmit(${id},${jo})">Submit</button>
+				</div>`)
+
+        div = document.getElementById("editJournalBook")
+        for (b = 0; b < books.length; b++) {
+            if (books[b].id == journal[jo].book.id) {
+                div.insertAdjacentHTML("beforeend", `<option value = "${books[b].id}" selected>${books[b].name}</option>`)
+            } else {
+                div.insertAdjacentHTML("beforeend", `<option value = "${books[b].id}">${books[b].name}</option>`)
+            }
+        }
+        div = document.getElementById("editJournalClient")
+        for (c = 0; c < clients.length; c++) {
+            if (clients[c].id == journal[jo].client.id) {
+                div.insertAdjacentHTML("beforeend", `<option value = "${clients[c].id}" selected>${clients[c].firstName} ${clients[c].lastName}</option>`)
+            } else {
+                div.insertAdjacentHTML("beforeend", `<option value = "${clients[c].id}">${clients[c].firstName} ${clients[c].lastName}</option>`)
+            }
+        }
+    }
+
+    function editJournalSubmit(id, jo) {
+        var book_id = document.getElementById("editJournalBook").value
+        var client_id = document.getElementById("editJournalClient").value
+        var dateRet = new Date(document.getElementById("editJournalDateRet").value.split('.').reverse())
+        if (dateRet === "Invalid Date") {
+            alert("Invalid Return Date")
+        } else {
+            var dateBeg = new Date(journal[jo].dateBeg.split('.').reverse())
+            if (dateRet.getTime() - dateBeg.getTime() < 0) {
+                alert("Invalid Return Date")
+            } else {
+                for (var b = 0; b < books.length; b++) {
+                    if (books[b].id == book_id) {
+                        break;
+                    }
+                }
+                for (var c = 0; c < clients.length; c++) {
+                    if (clients[c].id == client_id) {
+                        break;
+                    }
+                }
+                journal[jo].book = books[b]
+                journal[jo].client = clients[c]
+                journal[jo].dateRet = dateRet.toLocaleDateString()
+                var dateEnd = new Date(journal[jo].dateEnd.split('.').reverse())
+                var retFine = dateRet.getTime() - dateEnd.getTime()
+                if (retFine <= 0) {
+                    alert("No fine, everything is ok!")
+                } else {
+                    var fine = retFine / (1000 * 3600 * 24) * parseFloat(books[b].type.fine)
+                    alert("Fine is " + fine)
+                }
+
+                var request = new XMLHttpRequest();
+                request.open('PUT', url + "journal/upd/" + id, false);
+                request.setRequestHeader("Content-Type", "application/json")
+                request.setRequestHeader("Authorization", "Bearer " + token)
+                request.addEventListener('readystatechange', function () {
+                    if ((request.readyState == 4) && (request.status == 200)) {
+                    } else {
+                        alert("Error")
+                    }
+                })
+                request.send(JSON.stringify(journal[jo]))
+                render_page()
+            }
+        }
+    }
+
+    function addjournal() {
+        if (books.length == 0 || clients.length == 0) {
+            alert("Books or clients are empty")
+        } else {
+            try {
+                document.getElementById("page").remove()
+            } catch (e) {
+            }
+            var div = document.body;
+            div.insertAdjacentHTML("beforeend", `
+				<div id = "page">
+					<div>
+						<p>Book:</p>
+						<select id = "addJournalBook"></select>
+					</div>
+					<div>
+						<p>Client:</p>
+						<select id = "addJournalClient"></select>
+					</div>
+					<button onclick="addJournalSubmit()">Add</button>
+				</div>`)
+
+            div = document.getElementById("addJournalBook")
+            for (b = 0; b < books.length; b++) {
+                div.insertAdjacentHTML("beforeend", `<option value = "${books[b].id}">${books[b].name}</option>`)
+            }
+            div = document.getElementById("addJournalClient")
+            for (c = 0; c < clients.length; c++) {
+                div.insertAdjacentHTML("beforeend", `<option value = "${clients[c].id}">${clients[c].firstName} ${clients[c].lastName}</option>`)
+            }
+        }
+    }
+
+    function addJournalSubmit() {
+        var book_id = document.getElementById("addJournalBook").value
+        var client_id = document.getElementById("addJournalClient").value
+        for (var ci = 0; ci < clients.length; ci++) {
+            if (clients[ci].id == client_id) {
+                break;
+            }
+        }
+        for (var bi = 0; bi < books.length; bi++) {
+            if (books[bi].id == book_id) {
+                break;
+            }
+        }
+        var date = new Date(Date.now())
+        var dateBeg = date.toLocaleDateString()
+        var dateEnd = date.addDays(books[bi].type.dayCount).toLocaleDateString()
+        var dateRet = "-"
+        var request = new XMLHttpRequest();
+        request.open('POST', url + "journal/addJournal/", false);
+        request.setRequestHeader("Content-Type", "application/json")
+        request.setRequestHeader("Authorization", "Bearer " + token)
+        request.addEventListener('readystatechange', function () {
+            if ((request.readyState == 4) && (request.status == 200)) {
+                alert("Successful")
+            } else {
+                alert("Error")
+            }
+        })
+        request.send(JSON.stringify({
+            'book': books[bi],
+            'client': clients[ci],
+            'dateBeg': dateBeg,
+            'dateEnd': dateEnd,
+            'dateRet': dateRet
+        }))
+        render_page()
+    }
+
+    function clearJournal() {
+        var request = new XMLHttpRequest();
+        request.open('DELETE', url + "journal/clear", false);
+        request.setRequestHeader("Content-Type", "application/json")
+        request.setRequestHeader("Authorization", "Bearer " + token)
+        request.send()
+        render_page()
+    }
+
+    function editBook(id) {
+        try {
+            document.getElementById("page").remove()
+        } catch (e) {
+        }
+        var div = document.body;
+        for (var i = 0; i < books.length; i++) {
+            if (books[i].id == id) {
+                break;
+            }
+        }
+        div.insertAdjacentHTML("beforeend", `
+			<div id = "page">
+				<div>
+					<p>Name:</p>
+					<input type="text" value="${books[i].name}" id = "editBookName"></input>
+				</div>
+				<div>
+					<p>Count:</p>
+					<input type="text" value="${books[i].cnt}" id = "editBookCnt" onkeypress="validateInt(event)"></input>
+				</div>
+				<div>
+					<p>Type:</p>
+					<select id = "editBookTypeSELECT"></select>
+				</div>
+				<button onclick="submitEditBook(${id},${i})">Submit</button>
+				<button onclick="deleteBook(${id},${i})">Delete Book</button>
+			</div>
+			`)
+        div = document.getElementById("editBookTypeSELECT")
+        for (bt = 0; bt < bookTypes.length; bt++) {
+            if (bookTypes[bt].id == books[i].type.id) {
+                div.insertAdjacentHTML("beforeend", `<option value = "${bookTypes[bt].id}" selected>${bookTypes[bt].name}</option>`)
+            } else {
+                div.insertAdjacentHTML("beforeend", `<option value = "${bookTypes[bt].id}">${bookTypes[bt].name}</option>`)
+            }
+        }
+    }
+
+    function deleteBook(id, i) {
+        var bool = true
+        for (jo = 0; jo < journal.length; jo++) {
+            if (journal[jo].book.id == id) {
+                bool = false;
+                break;
+            }
+        }
+        if (bool) {
+            var type = books[i].type
+            var request = new XMLHttpRequest();
+            request.open('DELETE', url + "books/del/" + id, false);
+            request.setRequestHeader("Content-Type", "application/json")
+            request.setRequestHeader("Authorization", "Bearer " + token)
+            request.send()
+            books.splice(i, 1)
+            var type_cnt = 0
+            for (var j = 0; j < books.length; j++) {
+                if (type.id == books[j].type.id) {
+                    type_cnt += books[j].cnt
+                }
+            }
+            type.cnt = type_cnt
+            request = new XMLHttpRequest();
+            request.open('PUT', url + "bookTypes/upd/" + type.id, false);
+            request.setRequestHeader("Content-Type", "application/json")
+            request.setRequestHeader("Authorization", "Bearer " + token)
+            request.addEventListener('readystatechange', function () {
+                if ((request.readyState == 4) && (request.status == 200)) {
+                    alert("Successful")
+                } else {
+                    alert("Error")
+                }
+            })
+            request.send(JSON.stringify(type))
+        } else {
+            alert("Error, book already used in journal")
+        }
+        render_page()
+    }
+
+    function submitEditBook(id, i) {
+        var type = books[i].type
+        var cnt = document.getElementById("editBookCnt").value
+        var name = document.getElementById("editBookName").value
+        var typeid = document.getElementById("editBookTypeSELECT").value
+
+        if (validatestr([name, cnt], "name or count are empty")) {
+            for (var bt = 0; bt < bookTypes.length; bt++) {
+                if (bookTypes[bt].id == typeid) {
+                    break;
+                }
+            }
+
+            books[i].name = name
+            books[i].type = bookTypes[bt]
+            books[i].cnt = cnt
+            var request = new XMLHttpRequest();
+            request.open('PUT', url + "books/upd/" + id, false);
+            request.setRequestHeader("Content-Type", "application/json")
+            request.setRequestHeader("Authorization", "Bearer " + token)
+            request.addEventListener('readystatechange', function () {
+                if ((request.readyState == 4) && (request.status == 200)) {
+                    var type_cnt = 0
+                    for (var j = 0; j < books.length; j++) {
+                        if (type.id == books[j].type.id) {
+                            type_cnt += books[j].cnt
+                        }
+                    }
+                    type.cnt = type_cnt
+                    request = new XMLHttpRequest();
+                    request.open('PUT', url + "bookTypes/upd/" + type.id, false);
+                    request.setRequestHeader("Content-Type", "application/json")
+                    request.setRequestHeader("Authorization", "Bearer " + token)
+                    request.addEventListener('readystatechange', function () {
+                        if ((request.readyState == 4) && (request.status == 200)) {
+                        } else {
+                            alert("Error")
+                        }
+                    })
+                    request.send(JSON.stringify(type))
+
+                    type = bookTypes[bt]
+                    type_cnt = 0
+                    for (j = 0; j < books.length; j++) {
+                        if (type.id == books[j].type.id) {
+                            type_cnt += parseInt(books[j].cnt)
+                        }
+                    }
+                    type.cnt = type_cnt
+                    request = new XMLHttpRequest();
+                    request.open('PUT', url + "bookTypes/upd/" + type.id, false);
+                    request.setRequestHeader("Content-Type", "application/json")
+                    request.setRequestHeader("Authorization", "Bearer " + token)
+                    request.addEventListener('readystatechange', function () {
+                        if ((request.readyState == 4) && (request.status == 200)) {
+                            alert("Successful")
+                        } else {
+                            alert("Error")
+                        }
+                    })
+                    request.send(JSON.stringify(type))
+
+                    render_page()
+                } else {
+                    alert("Error, change another name")
+                }
+            })
+            request.send(JSON.stringify(books[i]))
+        }
+
+    }
+
+    function addbook() {
+        if (bookTypes.length == 0) {
+            alert("booktypes is empty")
+        } else {
+            try {
+                document.getElementById("page").remove()
+            } catch (e) {
+            }
+            var div = document.body;
+            div.insertAdjacentHTML("beforeend", `
+				<div id = "page">
+					<div>
+						<p>Name:</p>
+						<input type="text" id = "addBookName">
+					</div>
+					<div>
+						<p>Count:</p>
+						<input type="text" id = "addBookCnt" onkeypress="validateInt(event)">
+					</div>
+					<div>
+						<p>Type:</p>
+						<select id = "addBookTypeSELECT"></select>
+					</div>
+					<button onclick="addBookSubmit()">Add</button></div>
+			`)
+            div = document.getElementById("addBookTypeSELECT")
+            for (bt = 0; bt < bookTypes.length; bt++) {
+                div.insertAdjacentHTML("beforeend", `<option value = "${bookTypes[bt].id}">${bookTypes[bt].name}</option>`)
+            }
+        }
+    }
+
+    function addBookSubmit() {
+        var cnt = document.getElementById("addBookCnt").value
+        var name = document.getElementById("addBookName").value
+        var typeid = document.getElementById("addBookTypeSELECT").value
+
+        if (validatestr([name, cnt], "name or count are empty")) {
+            for (var bt = 0; bt < bookTypes.length; bt++) {
+                if (bookTypes[bt].id == typeid) {
+                    break;
+                }
+            }
+            var request = new XMLHttpRequest();
+            request.open('POST', url + "books/addBook/", false);
+            request.setRequestHeader("Content-Type", "application/json")
+            request.setRequestHeader("Authorization", "Bearer " + token)
+            request.addEventListener('readystatechange', function () {
+                if ((request.readyState == 4) && (request.status == 200)) {
+
+                    bookTypes[bt].cnt = parseInt(cnt) + parseInt(bookTypes[bt].cnt)
+
+                    request = new XMLHttpRequest();
+                    request.open('PUT', url + "bookTypes/upd/" + bookTypes[bt].id, false);
+                    request.setRequestHeader("Content-Type", "application/json")
+                    request.setRequestHeader("Authorization", "Bearer " + token)
+                    request.addEventListener('readystatechange', function () {
+                        if ((request.readyState == 4) && (request.status == 200)) {
+                            alert("Successful")
+                        } else {
+                            alert("Error")
+                        }
+                    })
+                    request.send(JSON.stringify(bookTypes[bt]))
+
+                    render_page()
+                } else {
+                    alert("Error, change book name")
+                }
+            })
+            request.send(JSON.stringify({'name': name, 'cnt': cnt, 'type': bookTypes[bt]}))
+
+        }
+    }
+
+    function addclient() {
+        try {
+            document.getElementById("page").remove()
+        } catch (e) {
+        }
+        var div = document.body;
+        div.insertAdjacentHTML("beforeend", `
+			<div id = "page">
+				<div>
+					<p>First Name</p>
+					<input type="text" id = "addClientFN">
+				</div>
+				<div>
+					<p>Last Name</p>
+					<input type="text" id = "addClientLN">
+				</div>
+				<div>
+					<p>Father Name</p>
+					<input type="text" id = "addClientFN2">
+				</div>
+				<div>
+					<p>Passport Seria</p>
+					<input type="text" onkeypress="validateInt(event)" id = "addClientPS">
+				</div>
+				<div>
+					<p>Passport Number</p>
+					<input type="text" onkeypress="validateInt(event)" id="addClientPN">
+				</div>
+				<button onclick="addClientSubmit()">Add Client</button>
+			</div>
+			`)
+    }
+
+    function addClientSubmit() {
+        var firstName = document.getElementById("addClientFN").value
+        var lastName = document.getElementById("addClientLN").value
+        var fatherName = document.getElementById("addClientFN2").value
+        var passportSeria = document.getElementById("addClientPS").value
+        var passportNum = document.getElementById("addClientPN").value
+
+        if (validatestr([firstName, lastName, fatherName, passportSeria, passportNum], "some data is empty")) {
+            var request = new XMLHttpRequest();
+            request.open('POST', url + "clients/addClient/", false);
+            request.setRequestHeader("Content-Type", "application/json")
+            request.setRequestHeader("Authorization", "Bearer " + token)
+            request.addEventListener('readystatechange', function () {
+                if ((request.readyState == 4) && (request.status == 200)) {
+                    alert("Successful")
+                } else {
+                    alert("Error")
+                }
+            })
+            request.send(JSON.stringify({
+                'firstName': firstName,
+                'lastName': lastName,
+                'fatherName': fatherName,
+                'passportSeria': passportSeria,
+                'passportNum': passportNum
+            }))
+            render_page()
+        }
+    }
+
+    function editClient(id) {
+        try {
+            document.getElementById("page").remove()
+        } catch (e) {
+        }
+        for (var cl = 0; cl < clients.length; cl++) {
+            if (clients[cl].id == id) {
+                break;
+            }
+        }
+        var div = document.body
+        div.insertAdjacentHTML("beforeend", `
+			<div id = "page">
+				<div>
+					<p>First Name</p>
+					<input type="text" id = "editClientFN" value="${clients[cl].firstName}">
+				</div>
+				<div>
+					<p>Last Name</p>
+					<input type="text" id = "editClientLN" value = "${clients[cl].lastName}">
+				</div>
+				<div>
+					<p>Father Name</p>
+					<input type="text" id = "editClientFN2" value = "${clients[cl].fatherName}">
+				</div>
+				<div>
+					<p>Passport Seria</p>
+					<input type="text" onkeypress="validateInt(event)" id = "editClientPS" value = "${clients[cl].passportSeria}">
+				</div>
+				<div>
+					<p>Passport Number</p>
+					<input type="text" onkeypress="validateInt(event)" id="editClientPN" value = "${clients[cl].passportNum}">
+				</div>
+				<button onclick="editClientSubmit(${id},${cl})">Submit</button>
+				<button onclick="deleteClient(${id})">Delete Client</button>
+			</div>
+			`)
+    }
+
+    function editClientSubmit(id, cl) {
+        var firstName = document.getElementById("editClientFN").value
+        var lastName = document.getElementById("editClientLN").value
+        var fatherName = document.getElementById("editClientFN2").value
+        var passportSeria = document.getElementById("editClientPS").value
+        var passportNum = document.getElementById("editClientPN").value
+
+        if (validatestr([firstName, lastName, fatherName, passportSeria, passportNum], "some data is empty")) {
+            clients[cl].firstName = firstName
+            clients[cl].lastName = lastName
+            clients[cl].fatherName = fatherName
+            clients[cl].passportSeria = passportSeria
+            clients[cl].passportNum = passportNum
+            var request = new XMLHttpRequest();
+            request.open('PUT', url + "clients/upd/" + id, false);
+            request.setRequestHeader("Content-Type", "application/json")
+            request.setRequestHeader("Authorization", "Bearer " + token)
+            request.addEventListener('readystatechange', function () {
+                if ((request.readyState == 4) && (request.status == 200)) {
+                    alert("Success")
+                } else {
+                    alert("Error")
+                }
+            })
+            request.send(JSON.stringify(clients[cl]))
+            render_page()
+        }
+    }
+
+    function deleteClient(id) {
+        var bool = true
+        for (var i = 0; i < journal.length; i++) {
+            if (journal[i].client.id == id) {
+                bool = false
+            }
+        }
+        if (bool) {
+            var request = new XMLHttpRequest();
+            request.open('DELETE', url + "clients/del/" + id, false);
+            request.setRequestHeader("Content-Type", "application/json")
+            request.setRequestHeader("Authorization", "Bearer " + token)
+            request.send()
+        } else {
+            alert("Error, client already used in journal")
+        }
+        render_page()
+    }
+
+    function addbooktype() {
+        try {
+            document.getElementById("page").remove()
+        } catch (e) {
+        }
+        var div = document.body;
+        div.insertAdjacentHTML("beforeend", `
+			<div id = "page">
+				<div>
+					<p>Name</p>
+					<input type="text" id = "addBookTypeName">
+				</div>
+				<div>
+					<p>Fine</p>
+					<input type = "text" id = "addBookTypeFine" onkeypress="validate(event)">
+				</div>
+				<div>
+					<p>Day Count</p>
+					<input type = "text" id = "addBookTypeDayCount" onkeypress="validateInt(event)"/>
+				</div>
+				<button onclick="addBookTypeSubmit()">Add</button>
+			</div>
+			`)
+    }
+
+    function addBookTypeSubmit() {
+        var name = document.getElementById("addBookTypeName").value
+        var fine = document.getElementById("addBookTypeFine").value
+        var dayCount = document.getElementById("addBookTypeDayCount").value
+
+        if (validatestr([name, fine, dayCount], "some data is empty") && validateFloat(fine, "uncorrect fine")) {
+            var request = new XMLHttpRequest();
+            request.open('POST', url + "bookTypes/addBookType/", false);
+            request.setRequestHeader("Content-Type", "application/json")
+            request.setRequestHeader("Authorization", "Bearer " + token)
+            request.addEventListener('readystatechange', function () {
+                if ((request.readyState == 4) && (request.status == 200)) {
+                    alert("Successful")
+                } else {
+                    alert("Error, change book type name")
+                }
+            })
+            request.send(JSON.stringify({'name': name, 'cnt': 0, 'fine': fine, 'dayCount': dayCount}))
+            render_page()
+        }
+    }
+
+    function editBookType(id) {
+        try {
+            document.getElementById("page").remove()
+        } catch (e) {
+        }
+
+        for (var bt = 0; bt < bookTypes.length; bt++) {
+            if (bookTypes[bt].id == id) {
+                break;
+            }
+        }
+        var div = document.body;
+        div.insertAdjacentHTML("beforeend", `
+			<div id = "page">
+				<div>
+					<p>Name</p>
+					<input type="text" id = "editBookTypeName" value = "${bookTypes[bt].name}">
+				</div>
+				<div>
+					<p>Fine</p>
+					<input type="text" id = "editBookTypeFine" onkeypress="validate(event)" value = "${bookTypes[bt].fine}">
+				</div>
+				<div>
+					<p>Day Count</p>
+					<input type="text" id = "editBookTypeDayCount" onkeypress="validateInt(event)" value = "${bookTypes[bt].dayCount}">
+				</div>
+				<button onclick="submitEditBookType(${id},${bt})">Submit</button>
+				<button onclick="deleteBookType(${id})">Delete Book Type</button>
+			</div>`)
+    }
+
+    function deleteBookType(id) {
+        var bool = true
+        for (var i = 0; i < books.length; i++) {
+            if (books[i].type.id == id) {
+                bool = false
+            }
+        }
+        if (bool) {
+            var request = new XMLHttpRequest();
+            request.open('DELETE', url + "bookTypes/del/" + id, false);
+            request.setRequestHeader("Content-Type", "application/json")
+            request.setRequestHeader("Authorization", "Bearer " + token)
+            request.send()
+        } else {
+            alert("Error, book type already used in book")
+        }
+        render_page()
+    }
+
+    function submitEditBookType(id, bt) {
+        var name = document.getElementById("editBookTypeName").value
+        var fine = document.getElementById("editBookTypeFine").value
+        var dayCount = document.getElementById("editBookTypeDayCount").value
+
+        if (validatestr([name, fine, dayCount], "some data is empty") && validateFloat(fine, "uncorrect fine")) {
+            bookTypes[bt].name = name
+            bookTypes[bt].fine = fine
+            bookTypes[bt].dayCount = dayCount
+            var request = new XMLHttpRequest();
+            request.open('PUT', url + "bookTypes/upd/" + id, false);
+            request.setRequestHeader("Content-Type", "application/json")
+            request.setRequestHeader("Authorization", "Bearer " + token)
+            request.addEventListener('readystatechange', function () {
+                if ((request.readyState == 4) && (request.status == 200)) {
+                    alert("Success")
+                } else {
+                    alert("Error, change another name")
+                }
+            })
+            request.send(JSON.stringify(bookTypes[bt]))
+            render_page()
+        }
+    }
+
+    function render_page() {
+        try {
+            document.getElementById("page").remove()
+        } catch (e) {
+        }
+
+        getTables()
+
+        if (roleAdmin) {
+            var div = document.body;
+            div.insertAdjacentHTML("beforeend",
+                `
+    <div id = "page">
+    <div>
+        <button onClick = "render_book_page()">
+            <p>Show books</p>
+        </button>
+        <button onClick = "addclient()">
+            <p>Add client</p>
+        </button>
+        <button onClick = "addjournal()">
+            <p>Add journal</p>
+        </button>
+        <button onClick = "clearJournal()">
+            <p>Clear journal</p>
+        </button>
+    </div>
+    <div>
+        <p>Journal</p>
+            <table id = "tableJournal"><tr>
+                <td> | Id</td><td> | BookId</td><td> | BookName</td><td> | ClientId</td><td> | ClientName</td><td> | DateBeg</td><td> | DateEnd</td><td> | DateRet</td><td> | EditButton</td>
+            </tr></table>
+    </div>
+    <div>
+        <p>Clients</p>
+        <table id = "tableClients"><tr>
+            <td> | Id</td><td> | FirstName</td><td> | LastName</td><td> | FatherName</td><td> | PassportSeria</td><td> | PassportNum</td><td> | EditButton</td>
+        </tr></table>
+    </div>
+    </div>
+</div>
+    `)
+
+
+            div = document.getElementById("tableJournal")
+            for (i = 0; i < journal.length; i++) {
+                div.insertAdjacentHTML("beforeend", `
+        <tr><td> | ${journal[i].id}</td><td> | ${journal[i].book.id}</td><td> | ${journal[i].book.name}</td><td> | ${journal[i].client.id}</td><td> | ${journal[i].client.firstName}</td><td> | ${journal[i].dateBeg}</td><td> | ${journal[i].dateEnd}</td><td> | ${journal[i].dateRet}</td><td><button name = "${journal[i].id}" onClick = "editJournal(this.name)">Edit</button</td></tr>`)
+            }
+
+            div = document.getElementById("tableClients")
+            for (i = 0; i < clients.length; i++) {
+                div.insertAdjacentHTML("beforeend", `
+        <tr><td> | ${clients[i].id}</td><td> | ${clients[i].firstName}</td><td> | ${clients[i].lastName}</td><td> | ${clients[i].fatherName}</td><td> | ${clients[i].passportSeria}</td><td> | ${clients[i].passportNum}</td><td><button name = "${clients[i].id}" onClick = "editClient(this.name)">Edit</button</td></tr>`)
+            }
+
+        } else {
+            var div = document.body;
+            div.insertAdjacentHTML("beforeend",
+                `
+    <div id = "page">
+    <div>
+        <button onClick = "addjournal()">
+            <p>Add journal</p>
+        </button>
+    </div>
+    <div>
+        <p>Journal</p>
+            <table id = "tableJournal"><tr>
+                <td> | BookName</td><td> | ClientName</td><td> | DateBeg</td><td> | DateEnd</td><td> | DateRet</td><td> | EditButton</td>
+            </tr></table>
+    </div>
+</div>
+    `)
+
+
+            div = document.getElementById("tableJournal")
+            for (i = 0; i < journal.length; i++) {
+                div.insertAdjacentHTML("beforeend", `
+        <tr><td> | ${journal[i].book.name}</td><td> | ${journal[i].client.firstName} ${journal[i].client.lastName}</td><td> | ${journal[i].dateBeg}</td><td> | ${journal[i].dateEnd}</td><td> | ${journal[i].dateRet}</td><td><button name = "${journal[i].id}" onClick = "editJournal(this.name)">Edit</button</td></tr>`)
+            }
+
+        }
+
+    }
+
+    function render_book_page() {
+        try {
+            document.getElementById("page").remove()
+        } catch (e) {
+        }
+
+        getTables()
+
+        if (roleAdmin) {
+            var div = document.body;
+            div.insertAdjacentHTML("beforeend",
+                `
+    <div id = "page">
+    <div>
+        <button onClick = "render_page()">
+            <p>Show journal</p>
+        </button>
+        <button onClick = "addbook()">
+            <p>Add book</p>
+        </button>
+        <button onClick = "addbooktype()">
+            <p>Add book type</p>
+        </button>
+    </div>
+    <div>
+        <p>Books</p>
+        <table id = "tableBooks"><tr>
+            <td> | Id</td><td> | Name</td><td> | Count</td><td> | TypeId</td><td> | TypeName</td><td> | EditButton</td>
+        </tr></table>
+    </div>
+    <div>
+        <p>Book types</p>
+        <table id = "tableBookTypes"><tr>
+            <td> | Id</td><td> | Name</td><td> | Count</td><td> | Fine</td><td> | DayCount</td><td> | EditButton</td>
+        </tr></table>
+    </div>
+</div>
+    `)
+
+
+            div = document.getElementById("tableBooks")
+            for (i = 0; i < books.length; i++) {
+                div.insertAdjacentHTML("beforeend", `
+        <tr><td> | ${books[i].id}</td><td> | ${books[i].name}</td><td> | ${books[i].cnt}</td><td> | ${books[i].type.id}</td><td> | ${books[i].type.name}</td><td><button name = "${books[i].id}" onClick = "editBook(this.name)">Edit</button</td></tr>`)
+            }
+
+
+            div = document.getElementById("tableBookTypes")
+            for (i = 0; i < bookTypes.length; i++) {
+                div.insertAdjacentHTML("beforeend", `
+        <tr><td> | ${bookTypes[i].id}</td><td> | ${bookTypes[i].name}</td><td> | ${bookTypes[i].cnt}</td><td> | ${bookTypes[i].fine}</td><td> | ${bookTypes[i].dayCount}</td><td><button name = "${bookTypes[i].id}" onClick = "editBookType(this.name)">Edit</button</td></tr>`)
+            }
+        }
+
+
+    }
+
+
+</script>
+<script>render_login_page()</script>
+</body>
+</html>
